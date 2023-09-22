@@ -1,0 +1,341 @@
+---
+title: "NDFSM Data Analysis"
+author: "Siddhesh Kulkarni, Subhadip Pal, Jeremy Gaskins"
+date: "2023-09-22"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+theme: flatly
+keep_tex: yes
+fig_caption: yes
+header-includes:
+- \usepackage{subcaption}
+- \usepackage{float}
+editor_options:
+  chunk_output_type: inline
+  urlcolor: blue
+---
+
+This document demonstrates the code used in the manuscript "Bayesian Method for Sparse Canonical Analysis" by Siddhesh Kulkarni, Subhadip Pal, Jeremy T Gaskins.  
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+knitr::opts_chunk$set(tidy = "styler")
+```
+
+```{r, include=FALSE}
+library(knitr)
+
+#opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
+```
+
+First we load the source file and other packages on which our code is dependent upon.  These files are available on Github at \url{https://github.com/SiddheshKulkarni-source/CCA}.  The user should download these R files and place them in their directory so that they can be openned and run as source files.
+
+
+```{r, Sourcefiles, include=TRUE, message=FALSE}
+
+source("NDFSM.R")
+
+source("DFSM.R")
+
+source("Bayesian_Summary_Data_Analysis.R")
+
+load("Breast Cancer Data Demonstration.Rdata")
+
+```
+
+# Breast Cancer Data Set
+
+To demonstrate the use of our code, we consider the subset of the breast cancer data as discussed in Section 6 of the manuscript. 
+
+We apply our method to the breast cancer data available from \url{https://tibshirani.su.domains/PMA/}. There are $n=89$ samples/observation on which DNA and RNA data are available. For the view 1 data, we consider the matrix of DNA copy numbers (DNA) for genes located on the $1^{st}$ chromosome, yielding $p^{(1)}=136$ responses per sample. The data source also contains genetic expression levels (RNA) for  $19,672$ genes, and we create the view 2 data by selecting the 50 genes located on chromosome 1 with the greatest variability (based on interquartile range). Also we select an additional 200 genes across the other 22 chromosome sites with the highest interquartile range to serve as genes that are likely to be unrelated to the view 1 data.  This yields $p^{(2)}=250$. We standardize each column in both data views.
+
+The following code chunk performs the data cleaning steps for obtaining the DNA and RNA views described above. The required source file for this chunk is "databuild.R" which is loaded in the code chunk before. 
+
+We have also provided the obtained data in the form an RData file.  We demonstrate the key features.
+```{r, Paramters for computation, include=TRUE, message=TRUE}
+
+X_1 <- Data_Set_1$X_1_dna #View 1 data of copy numbers
+
+dim(X_1) 
+
+X_1[1:5,1:10] ## Print the data for first 5 patients and first 10 copy numbers
+
+X_2 <- Data_Set_1$X_2_rna #View 2 data with RNA gene expression
+
+dim(X_2)
+
+X_2[1:5,1:10] ## Print the data for first 5 patients and first 10 RNA expressions
+
+no_patients <- nrow(X_1)
+
+
+```
+In the view 2 data, the column names depicts the gene names.  
+Additionally, this RData file contains \texttt{gene\_chr\_250}, which indicates the chromosome location for each of genes in View 2.
+
+
+```{r message=TRUE, ,include=TRUE}
+
+table(gene_chr_250)
+
+```
+Using this dataset, we demonstrate how to use our code to fit each model. First, we start with our Non-Diagonal Factor Shrinking Model (NDFSM).
+
+# NDFSM and DFSM Model Fitting
+
+
+## Function Arguments
+
+Many of the functions we introduce are based on a common set of inputs/arguments.  These include
+
+- *d*:  Indicates number of factors used in the factor models.
+
+- *X_1*: Data matrix for View 1.
+
+- *X_2*: Data matrix for View 2. Note that *X_1* and *X_2* must have the same number of rows.
+
+- *CCA_select*: Number of Canonical Correlation coefficients to be estimated/stored. This must be less than or equal to *d*.
+
+- *Burn Iterations*: For MCMC number of iterations are needed to burn before attaining stationary state.
+
+- *MCMC Iterations*: For MCMC, number of iterations are needed to run the model to obtain output.
+
+- *thin*: For MCMC, the iteration that is being saved. For example, if thin is equal to 7, then after completing burn-in, samples from every 7th iteration will be saved. 
+
+
+## Run NDFSM and DFSM
+
+The following code runs the MCMC algorithm for the NDFSM and DFSM models.  By default, these lines of code are commented out to allow the user to skip to the next block for inference using an existing sample.
+
+```{r, NDFSM, include=TRUE, message=FALSE}
+# Setting up the Burn Iterations and MCMC Iterations
+
+burn_iter <- 25000
+thin <- 15
+mcmc_iter <- 75000
+CCA_select <- 10
+
+# # Running the code for NDFSM
+# time.start <- Sys.time()
+# NDFSM_Output <-
+#   NDFSM(
+#     d = 20,
+#     burn_iter = burn_iter,
+#     mcmc_iter = mcmc_iter,
+#     thin = thin,
+#     X_1 = X_1,
+#     X_2 = X_2,
+#     CCA_select = CCA_select
+#   )
+# save(Output, file=paste0('NDFSM Output_', format(Sys.time(), "%b %e %Y"), '.RData'))
+# time.end <- Sys.time()
+# print( time.end - time.start)
+
+
+# # Running the code for DFSM
+# time.start <- Sys.time()
+# DFSM_Output <-
+#   DFSM(
+#     d = 20,
+#     burn_iter = burn_iter,
+#     mcmc_iter = mcmc_iter,
+#     thin = thin,
+#     X_1 = X_1,
+#     X_2 = X_2,
+#     CCA_select = CCA_select
+#   )
+# save(Output, file=paste0('DFSM Output_', format(Sys.time(), "%b %e %Y"), '.RData'))
+# time.end <- Sys.time()
+# print( time.end - time.start)
+```
+
+Note that we save this output file to call later into a dataframe labeled as either \texttt{NDFSM\_Output} or \texttt{DFSM\_Output}, along with the data the code was run.  This way it can be called later for analysis as needed.
+
+
+## Evaluation of posterior samples
+
+The output of the NDFSM code contains the stored posterior samples of all objects of interest.  If using existing code, this block can be used to open the output from these previously run code.
+
+```{r, NDFSM3, include=TRUE, message=TRUE}
+
+load('NDFSM_BC_Output.Rdata')  ## loading output from already ran code for NDFSM
+
+#load('DFSM_BC_Output.Rdata') ## loading output from already ran code for DFSM
+
+names(Output)
+
+```
+We store a total of $G$ samples, where $G=$\texttt{mcmc\_iter$/$thin}.  \texttt{A\_1\_MCMC} is a $p^{(1)}\times d\times G$ dimensional array where \texttt{A\_1\_MCMC[ , ,g]} is the $g$-th sample of the $A_1$ matrix.  Similarly, \texttt{Mu\_1\_MCMC} and \texttt{Omega\_1\_MCMC} store the sampled mean vectors and the generalized specificity matrices for view 1.  \texttt{A\_2\_MCMC}, \texttt{Mu\_2\_MCMC}, and \texttt{Omega\_2\_MCMC} contain the samples for the view 2 parameters.
+
+\texttt{CCA\_MCMC} contains is a $1\times$\texttt{CCA\_select}$\times G$ array where the $g$th sample is a vector of the stored canonical correlations.  \texttt{Direction\_CCA\_Vec1\_MCMC} and  \texttt{Direction\_CCA\_Vec2\_MCMC} contain the corresponding loading/direction vectors with dimension $p^{(m)}\times$\texttt{CCA\_select}$\times G$.
+
+
+```{r, NDFSM4, include=TRUE, message=TRUE}
+
+dim(Output$A_1_MCMC)
+dim(Output$Mu_1_MCMC)
+dim(Output$Omega_1_MCMC)
+dim(Output$CCA_MCMC)
+dim(Output$Direction_CCA_Vec1_MCMC)
+
+```
+
+
+## Summary Analysis Function
+
+Following function calculates the summary statistics from the MCMC run, as well as producing
+traceplots to evaluate MCMC convergence. It requires following arguments:
+
+- *Output*: MCMC output from the NDFSM code.
+
+- *Shrinkage Threshold*: A user defined threshold value to assess for potential overshrinking.  We evaluate the posterior distribution of the first CC, and if it is smaller than this threshold with posterior probability greater than 50\%, then overshrinkage might have occurred. 
+
+- *shrinkage_check*: By default TRUE.  Determines whether to perform the check of overshrinkage.
+
+- *plot_indicator*: By default TRUE. Generates traceplots.
+
+- *plot_components*: Number of components of first vectors of both views needed to be plot.
+
+- *alpha.CC*: determines the level for the credible intervals of the canonical correlations.  We generally recommend using 0.05 for 95\% intervals.
+
+- *alpha.dir*: determines the level for the credible intervals of the direction vectors. We generally recommend using 0.5 for 50\% intervals due to the heavy tailed nature of the horseshoe priors.
+
+
+For demonstration, we will plot a selection of traceplots to investigate MCMC convergence.  If \texttt{plot\_indicator=TRUE}, we plot each of canonical correlations (up to \texttt{CCA\_select}), and the first \texttt{plot\_components} components of the direction vector of the first CC in both views.
+The red line designates the posterior estimate of the corresponding parameter. 
+Additionally, traceplots for the log-likelihood function and the log-determinant of the full covariance matrix are considered to further assess overall mixing.  
+
+```{r, Summary Calculation,include=TRUE, message=TRUE}
+
+Summary_Analysis <-
+  Analysis_Summary(
+    Output = Output,
+    Data=Data_Set_1,
+    shrinkage_threshold = 0.2,
+    plot_indicator = TRUE,
+    plot_components = 10,
+    alpha.CC=0.05, alpha.dir=0.50, 
+    shrinkage_check = TRUE
+    )
+
+
+```
+
+We consider the effective sample size of the first CCA as well as log-likelihood as a marker of the amount of information contained in a posterior sample.  We typically seek for this value to be at least 1000.  These effective samples sizes are given in 
+```{r, Effectivesample size of first CC,include=TRUE, message=FALSE}
+
+Summary_Analysis$effective_size_first_CCA
+
+Summary_Analysis$effective_size_log_likelihood
+
+```
+
+## Summary Analysis Output and Interpretation
+The output of the \texttt{Analysis\_Summary} function contains the following objects:
+
+```{r, Summary output,include=TRUE, message=FALSE}
+names(Summary_Analysis)
+
+```
+The objects contain the following information:
+
+- \texttt{Shrinkage\_calculator}: The posterior probability that the first CC is less than the \texttt{shrinkage\_threshold}.
+
+- \texttt{first\_direction\_significant\_features\_View1} and \texttt{\_View2}: These provide indicator vectors representing the significant features in direction vector 1 for View 1 and View 2.
+
+- \texttt{V1.dir.data.frame} and \texttt{V2.dir.data.frame}: These are *p1* by 3 and *p2* by 3 data frames containing the estimated first direction vector and its credible interval for each view.
+
+- \texttt{Direction\_Vector\_View\_1} and \texttt{Direction\_Vector\_View\_2}: These are *p1* by *G* and *p2* by *G* data frames containing the samples for the first direction vectors for view 1 and view 2 after applying the identifiability adjustment.
+
+- \texttt{effecticve\_size\_first\_CCA} and \texttt{effecticve\_size\_log\_likelihood}: These provide the effective sample sizes for the first canonical correlation and for the log-likelihood.
+
+- \texttt{CC.data.frame}: The summary file contains the posterior means of the first \texttt{CCA\_select} canonical correlations, and the credible interval bounds for each.
+
+
+Once, we have established that MCMC convergence is appropriate from the traceplots and ESS, we next need to determine if the NDFSM output is compromised due to potential overshrinkage.  (This is not relevant if using the DFSM model.)  To that end, we consider \texttt{Shrinkage\_calculator}, the posterior probability that the first CC is less than the \texttt{shrinkage\_threshold}.  
+
+```{r, Shrinkage Calculator,include=TRUE, message=FALSE}
+
+Summary_Analysis$Shrinkage_calculator
+
+```
+
+If this exceeds alpha, which is set 0.5 here, there is a high probability given to low CC suggesting overshrinkage. The Summary function gives out the message which tells whether to continue with NDFSM (if \texttt{shrinkage\_check} is set to TRUE). In this case as the \texttt{Shrinkage\_calculator} suggest the possibility of overshrinkage, we need to run diagonal version of the model.  Note that running the summary function will automatically output one of following two message to instruct the use on how to proceed:
+
+- Continue with NDFSM; No evidence of overshrinkage
+
+- Run DFSM Model; Overshrinkage is suspected
+
+We also note that in cases with high levels of over-shrinkage, there are often issues with MCMC convergence with poor ESS.  
+
+## Posterior Inference (Point Estimates and Intervals)
+
+If we pass the overshrinkage criteria, we will perform inference using these samples.  Firstly, we consider the posterior means and the credible intervals for the canonical correlations.
+
+```{r CC Bounds,include=TRUE, message=TRUE}
+
+Summary_Analysis$CC.data.frame
+
+```
+Next, we consider the estimated direction vectors. We also have credible intervals for each direction component.
+```{r Direction Vectors,include=TRUE, message=FALSE}
+
+#Direction Vectors Summary of View 1
+
+head(round(Summary_Analysis$V1.dir.data.frame,4),20)
+
+round(Summary_Analysis$V2.dir.data.frame,4)[1:20,]
+
+```
+We determine which components are significantly associated across views by determining which features have a credible interval that excludes zero.
+
+```{r Breast Cancer analysis, include=TRUE, message=FALSE}
+
+# View 1 Significant features
+
+#number of view 1 significant features
+sum(Summary_Analysis$first_direction_significant_features_View1==1) 
+
+#location of view 1 significant features
+which(Summary_Analysis$first_direction_significant_features_View1==1) 
+
+
+# View 2 Significant features
+
+names(Summary_Analysis$first_direction_significant_features_View2) <- 
+    colnames(Data_Set_1$X_2_rna)
+
+#number of view 2 significant features
+sum(Summary_Analysis$first_direction_significant_features_View2==1) 
+
+#location of view 2 significant features
+which(Summary_Analysis$first_direction_significant_features_View2==1) 
+```
+
+Specific to our breast cancer analysis, we also considered how many of these view 2 significant features are associated with the first chromosome.  We also compute the weight in the view 2 direction vector estimate that is associated with the genes that are truly located on chromosome 1 (which determines view 1).
+```{r NDFSM Analysis, include=TRUE, message=FALSE}
+### Chromosome location for View 2 Significant features
+
+# Significant genes by chromosome 
+table(gene_chr_250[t(Summary_Analysis$first_direction_significant_features_View2)==1] )
+
+# Proportion of significant genes on chromosome 1
+mean(gene_chr_250[t(Summary_Analysis$first_direction_significant_features_View2)==1]==1 )
+
+# Names of significant genes on chromosome 1
+rownames(gene_chr_250)[ which(Summary_Analysis$first_direction_significant_features_View2==1 & 
+        gene_chr_250==1) ]
+
+
+### View 2 direction vector contribution from chr 1 components
+sum((Summary_Analysis$V2.dir.data.frame[,1]^2)[gene_chr_250==1])
+
+
+```
+
+
+
+
