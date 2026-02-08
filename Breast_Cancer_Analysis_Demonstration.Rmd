@@ -1,7 +1,7 @@
 ---
-title: "NDFSM Data Analysis"
+title: "MHCFM Data Analysis"
 author: "Siddhesh Kulkarni, Subhadip Pal, Jeremy Gaskins"
-date: "2023-09-22"
+date: "2026-02-07"
 output:
   pdf_document: default
   html_document:
@@ -36,9 +36,9 @@ First we load the source file and other packages on which our code is dependent 
 
 ```{r, Sourcefiles, include=TRUE, message=FALSE}
 
-source("NDFSM.R")
+setwd("/Users/siddheshkulkarni/Desktop/CCA_complete/Github/Final Github")
 
-source("DFSM.R")
+source("MHCFM.R")
 
 source("Bayesian_Summary_Data_Analysis.R")
 
@@ -82,9 +82,9 @@ Additionally, this RData file contains \texttt{gene\_chr\_250}, which indicates 
 table(gene_chr_250)
 
 ```
-Using this dataset, we demonstrate how to use our code to fit each model. First, we start with our Non-Diagonal Factor Shrinking Model (NDFSM).
+Using this dataset, we demonstrate how to use our code to fit each model. First, we start with our Non-Diagonal Factor Shrinking Model (NMHCFM).
 
-# NDFSM and DFSM Model Fitting
+# MHCFM Model Fitting
 
 
 ## Function Arguments
@@ -106,11 +106,11 @@ Many of the functions we introduce are based on a common set of inputs/arguments
 - *thin*: For MCMC, the iteration that is being saved. For example, if thin is equal to 7, then after completing burn-in, samples from every 7th iteration will be saved. 
 
 
-## Run NDFSM and DFSM
+## Run MHCFM
 
-The following code runs the MCMC algorithm for the NDFSM and DFSM models.  By default, these lines of code are commented out to allow the user to skip to the next block for inference using an existing sample.
+The following code runs the MCMC algorithm for the MHCFM model.  By default, these lines of code are commented out to allow the user to skip to the next block for inference using an existing sample.
 
-```{r, NDFSM, include=TRUE, message=FALSE}
+```{r, MHCFM, include=TRUE, message=FALSE}
 # Setting up the Burn Iterations and MCMC Iterations
 
 burn_iter <- 25000
@@ -118,10 +118,10 @@ thin <- 15
 mcmc_iter <- 75000
 CCA_select <- 10
 
-# # Running the code for NDFSM
+# # Running the code for MHCFM
 # time.start <- Sys.time()
-# NDFSM_Output <-
-#   NDFSM(
+# MHCFM_Output <-
+#   MHCFM(
 #     d = 20,
 #     burn_iter = burn_iter,
 #     mcmc_iter = mcmc_iter,
@@ -130,40 +130,27 @@ CCA_select <- 10
 #     X_2 = X_2,
 #     CCA_select = CCA_select
 #   )
-# save(Output, file=paste0('NDFSM Output_', format(Sys.time(), "%b %e %Y"), '.RData'))
-# time.end <- Sys.time()
-# print( time.end - time.start)
 
-
-# # Running the code for DFSM
-# time.start <- Sys.time()
-# DFSM_Output <-
-#   DFSM(
-#     d = 20,
-#     burn_iter = burn_iter,
-#     mcmc_iter = mcmc_iter,
-#     thin = thin,
-#     X_1 = X_1,
-#     X_2 = X_2,
-#     CCA_select = CCA_select
-#   )
-# save(Output, file=paste0('DFSM Output_', format(Sys.time(), "%b %e %Y"), '.RData'))
+# save(Output, file=paste0('MHCFM Output_', format(Sys.time(), "%b %e %Y"), '.RData'))
 # time.end <- Sys.time()
 # print( time.end - time.start)
 ```
 
-Note that we save this output file to call later into a dataframe labeled as either \texttt{NDFSM\_Output} or \texttt{DFSM\_Output}, along with the data the code was run.  This way it can be called later for analysis as needed.
+Note that we save this output file to call later into a dataframe labeled as \texttt{MHCFM\_Output}, along with the data the code was run.  This way it can be called later for analysis as needed.
 
 
 ## Evaluation of posterior samples
 
-The output of the NDFSM code contains the stored posterior samples of all objects of interest.  If using existing code, this block can be used to open the output from these previously run code.
+The output of the MHCFM code contains the stored posterior samples of all objects of interest.  If using existing code, this block can be used to open the output from these previously run code.
 
-```{r, NDFSM3, include=TRUE, message=TRUE}
+```{r, MHCFM3, include=TRUE, message=TRUE}
 
-load('NDFSM_BC_Output.Rdata')  ## loading output from already ran code for NDFSM
+load('MHCFM_Output_Breast_Cancer.Rdata')  ## loading output from already ran code
 
-#load('DFSM_BC_Output.Rdata') ## loading output from already ran code for DFSM
+if( "MHCFM_Output" %in% ls() ){
+    Output <- MHCFM_Output
+
+}
 
 names(Output)
 
@@ -173,7 +160,7 @@ We store a total of $G$ samples, where $G=$\texttt{mcmc\_iter$/$thin}.  \texttt{
 \texttt{CCA\_MCMC} contains is a $1\times$\texttt{CCA\_select}$\times G$ array where the $g$th sample is a vector of the stored canonical correlations.  \texttt{Direction\_CCA\_Vec1\_MCMC} and  \texttt{Direction\_CCA\_Vec2\_MCMC} contain the corresponding loading/direction vectors with dimension $p^{(m)}\times$\texttt{CCA\_select}$\times G$.
 
 
-```{r, NDFSM4, include=TRUE, message=TRUE}
+```{r, NMHCFM4, include=TRUE, message=TRUE}
 
 dim(Output$A_1_MCMC)
 dim(Output$Mu_1_MCMC)
@@ -189,7 +176,7 @@ dim(Output$Direction_CCA_Vec1_MCMC)
 Following function calculates the summary statistics from the MCMC run, as well as producing
 traceplots to evaluate MCMC convergence. It requires following arguments:
 
-- *Output*: MCMC output from the NDFSM code.
+- *Output*: MCMC output from the MHCFM code.
 
 - *Shrinkage Threshold*: A user defined threshold value to assess for potential overshrinking.  We evaluate the posterior distribution of the first CC, and if it is smaller than this threshold with posterior probability greater than 50\%, then overshrinkage might have occurred. 
 
@@ -202,7 +189,6 @@ traceplots to evaluate MCMC convergence. It requires following arguments:
 - *alpha.CC*: determines the level for the credible intervals of the canonical correlations.  We generally recommend using 0.05 for 95\% intervals.
 
 - *alpha.dir*: determines the level for the credible intervals of the direction vectors. We generally recommend using 0.5 for 50\% intervals due to the heavy tailed nature of the horseshoe priors.
-
 
 For demonstration, we will plot a selection of traceplots to investigate MCMC convergence.  If \texttt{plot\_indicator=TRUE}, we plot each of canonical correlations (up to \texttt{CCA\_select}), and the first \texttt{plot\_components} components of the direction vector of the first CC in both views.
 The red line designates the posterior estimate of the corresponding parameter. 
@@ -255,7 +241,7 @@ The objects contain the following information:
 - \texttt{CC.data.frame}: The summary file contains the posterior means of the first \texttt{CCA\_select} canonical correlations, and the credible interval bounds for each.
 
 
-Once, we have established that MCMC convergence is appropriate from the traceplots and ESS, we next need to determine if the NDFSM output is compromised due to potential overshrinkage.  (This is not relevant if using the DFSM model.)  To that end, we consider \texttt{Shrinkage\_calculator}, the posterior probability that the first CC is less than the \texttt{shrinkage\_threshold}.  
+Once, we have established that MCMC convergence is appropriate from the traceplots and ESS, we next need to determine if the MHCFM output is compromised due to potential overshrinkage. To that end, we consider \texttt{Shrinkage\_calculator}, the posterior probability that the first CC is less than the \texttt{shrinkage\_threshold}.  
 
 ```{r, Shrinkage Calculator,include=TRUE, message=FALSE}
 
@@ -263,12 +249,7 @@ Summary_Analysis$Shrinkage_calculator
 
 ```
 
-If this exceeds alpha, which is set 0.5 here, there is a high probability given to low CC suggesting overshrinkage. The Summary function gives out the message which tells whether to continue with NDFSM (if \texttt{shrinkage\_check} is set to TRUE). In this case as the \texttt{Shrinkage\_calculator} suggest the possibility of overshrinkage, we need to run diagonal version of the model.  Note that running the summary function will automatically output one of following two message to instruct the use on how to proceed:
-
-- Continue with NDFSM; No evidence of overshrinkage
-
-- Run DFSM Model; Overshrinkage is suspected
-
+If this exceeds alpha, which is set 0.5 here, there is a high probability given to low CC suggesting overshrinkage. The Summary function gives out the message which tells whether overshrinkage is detected (if \texttt{shrinkage\_check} is set to TRUE). 
 We also note that in cases with high levels of over-shrinkage, there are often issues with MCMC convergence with poor ESS.  
 
 ## Posterior Inference (Point Estimates and Intervals)
@@ -316,7 +297,7 @@ which(Summary_Analysis$first_direction_significant_features_View2==1)
 ```
 
 Specific to our breast cancer analysis, we also considered how many of these view 2 significant features are associated with the first chromosome.  We also compute the weight in the view 2 direction vector estimate that is associated with the genes that are truly located on chromosome 1 (which determines view 1).
-```{r NDFSM Analysis, include=TRUE, message=FALSE}
+```{r NMHCFM Analysis, include=TRUE, message=FALSE}
 ### Chromosome location for View 2 Significant features
 
 # Significant genes by chromosome 
@@ -335,6 +316,11 @@ sum((Summary_Analysis$V2.dir.data.frame[,1]^2)[gene_chr_250==1])
 
 
 ```
+
+
+
+
+
 
 
 
