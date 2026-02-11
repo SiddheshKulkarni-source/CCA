@@ -35,13 +35,10 @@ First we load the source file and other packages on which our code is dependent 
 
 
 ```{r, Sourcefiles, include=TRUE, message=FALSE}
-
-setwd("/Users/siddheshkulkarni/Desktop/CCA_complete/Github/Final Github")
-
+library(here)
+setwd(here())
 source("MHCFM.R")
-
 source("Bayesian_Summary_Data_Analysis.R")
-
 load("Breast Cancer Data Demonstration.Rdata")
 
 ```
@@ -82,7 +79,7 @@ Additionally, this RData file contains \texttt{gene\_chr\_250}, which indicates 
 table(gene_chr_250)
 
 ```
-Using this dataset, we demonstrate how to use our code to fit each model. First, we start with our Non-Diagonal Factor Shrinking Model (NMHCFM).
+Using this dataset, we demonstrate how to use our code to fit each model. First, we start with our MHCF model.
 
 # MHCFM Model Fitting
 
