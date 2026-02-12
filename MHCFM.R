@@ -133,6 +133,107 @@ lk_para_calculator2 <- function(X_grand, mu_1, mu_2, phi_grand)
 norm_vec <- function(x) sqrt(sum(x^2))
 
 ############################################################
+### Graphical Horseshoe (GHS) update for precision matrices
+### This is a node-wise Gibbs update scheme:
+###  - Updates Omega (precision) and Sigma (covariance)
+###  - Shrinkage controlled by lambda_sq (local) and tau_sq (global)
+### NOTE: In MHCFM below, you use diagonal IG updates for Phi after iter>1,
+###       and use this GHS routine only in the "else" branch (iter <= 1).
+############################################################
+GHS_modified_2 <- function(X, Lambda_sq, Nu, Omega, Sigma, tau_sq, xi) {
+  
+  n <- nrow(X)
+  S <- t(X) %*% (X)      # scatter matrix
+  p <- nrow(S)
+  
+  # Precompute indices excluding i for node-wise updates
+  ind_all <- matrix(0, p - 1, p)
+  for (i in 1:p) {
+    if (i == 1) {
+      ind = c(2:p)
+    } else if (i == p) {
+      ind = c(1:(p - 1))
+    } else {
+      ind = c(1:(i - 1), (i + 1):p)
+    }
+    ind_all[, i] <- ind
+  }
+  
+  # Node-wise updates
+  for (i in 1:p) {
+    
+    ind <- ind_all[, i]
+    
+    # Partition Sigma and S for node i
+    sigma_11 <- Sigma[ind, ind]
+    sigma_12 <- Sigma[ind, i]
+    sigma_22 <- Sigma[i, i]
+    s_21 <- S[ind, i]
+    s_22 <- S[i, i]
+    
+    # Local shrinkage params for edges connected to i
+    lambda_sq_12 <- Lambda_sq[ind, i]
+    nu_12 <- Nu[ind, i]
+    
+    # Sample gamma (related to omega_22)
+    gamma <- rgamma(1, shape = ((n/2) + 1), rate = s_22/2)
+    
+    # Conditional block inversion quantities
+    inv_Omega_11 <- sigma_11 - ((sigma_12 %*% t(sigma_12)) / (sigma_22))
+    
+    # Posterior precision for beta = omega_12
+    inv_C <- (s_22 * inv_Omega_11) + diag(1 / (lambda_sq_12 * tau_sq), p - 1)
+    inv_C_chol <- chol(inv_C)
+    
+    # Posterior mean of beta
+    mu_i <- -chol2inv(inv_C_chol) %*% s_21
+    
+    # Sample beta and build omega blocks
+    beta <- mu_i + solve(inv_C_chol, rnorm(p - 1, 0, 1))
+    omega_12 <- beta
+    omega_22 <- gamma + t(beta) %*% inv_Omega_11 %*% beta
+    
+    # Update local shrinkage lambda_sq and nu
+    rate <- (1/nu_12) + ((omega_12^2) / (2 * tau_sq))
+    lambda_sq_12 <- rinvgamma(p - 1, shape = 1, rate = rate)
+    nu_12 <- rinvgamma(p - 1, shape = 1, rate = (1 + (1 / lambda_sq_12)))
+    
+    # Write back Omega
+    Omega[i, ind] <- omega_12
+    Omega[ind, i] <- omega_12
+    Omega[i, i] <- omega_22
+    
+    # Update Sigma from Omega blocks
+    temp <- inv_Omega_11 %*% beta
+    Sigma_11 <- inv_Omega_11 + temp %*% t(temp) / gamma
+    sigma_12 <- -temp / gamma
+    sigma_22 <- 1 / gamma
+    
+    Sigma[ind, ind] <- Sigma_11
+    Sigma[i, i] <- sigma_22
+    Sigma[i, ind] <- sigma_12
+    Sigma[ind, i] <- sigma_12
+    
+    # Store shrinkage params symmetrically
+    Lambda_sq[i, ind] <- lambda_sq_12
+    Lambda_sq[ind, i] <- lambda_sq_12
+    Nu[i, ind] <- nu_12
+    Nu[ind, i] <- nu_12
+  }
+  
+  # Global shrinkage update tau_sq
+  omega_vector <- Omega[lower.tri(Omega, diag = FALSE)]
+  lambda_sq_vector <- Lambda_sq[lower.tri(Lambda_sq, diag = FALSE)]
+  rate1 <- 1/xi + sum((omega_vector^2) / (2 * lambda_sq_vector))
+  
+  tau_sq <- rinvgamma(1, shape = ((p * (p - 1) / 2) + 1) / 2, rate = rate1)
+  xi <- rinvgamma(1, shape = 1, rate = (1 + 1/tau_sq))
+  
+  return(list(Omega = Omega, Lambda_sq = Lambda_sq, Nu = Nu,
+              Tau_sq = tau_sq, Sigma = Sigma, xi = xi))
+}
+
+############################################################
 ###  MHCFM run function
 ### Inputs:
 ###   d          : latent factor dimension
@@ -213,19 +314,6 @@ MHCFM <- function(d,
   ##########################################################
   eta <- array(dim = c(1, d, iter_max))
   eta_iter <- c()
-  
-  # Placeholders / initialization for GHS objects
-  Omega_1_GHS <- Sigma_1_GHS <- Phi_1_iter <- array(dim = c(p1, p1))
-  Omega_2_GHS <- Sigma_2_GHS <- Phi_2_iter <- array(dim = c(p2, p2))
-  Phi_grand_iter <- array(dim = c(p1 + p2, p1 + p2))
-  
-  Lambda_sq_GHS_1 <- Nu_GHS_1 <- array(dim = c(p1, p1))
-  Lambda_sq_GHS_2 <- Nu_GHS_2 <- array(dim = c(p2, p2))
-  
-  tau_sq_GHS_1 <- array(dim = c(1))
-  tau_sq_GHS_2 <- array(dim = c(1))
-  xi_GHS_1 <- array(dim = c(1))
-  xi_GHS_2 <- array(dim = c(1))
   
   Z_post_iter <- array(dim = c(no_patients, d))
   
@@ -444,9 +532,10 @@ MHCFM <- function(d,
     
     ########################################################
     ### 7) Residual covariance update:
-    ### Update diagonal Phi via IG (fast, stable)
+    ### If iter > 1: update only diagonal Phi via IG (fast, stable)
+    ### Else: do one-step full Graphical Horseshoe update
     ########################################################
-    
+    if (iter > 1) {
       
       for (j in 1:p1) {
         Phi_1_iter[j, j] <- rinvgamma(
@@ -466,6 +555,43 @@ MHCFM <- function(d,
       diag(Omega_1_GHS) <- 1 / diag(Phi_1_iter)
       diag(Omega_2_GHS) <- 1 / diag(Phi_2_iter)
       
+    } else {
+      
+      # Full GHS update for view 1
+      GHS_Run_1 <- GHS_modified_2(
+        X = X_delta_1,
+        Lambda_sq = Lambda_sq_GHS_1,
+        Nu = Nu_GHS_1,
+        Omega = Omega_1_GHS,
+        Sigma = Phi_1,
+        tau_sq = tau_sq_GHS_1,
+        xi = xi_GHS_1
+      )
+      Phi_1_iter <- GHS_Run_1$Sigma
+      Omega_1_GHS <- GHS_Run_1$Omega
+      Lambda_sq_GHS_1 <- GHS_Run_1$Lambda_sq
+      Nu_GHS_1 <- GHS_Run_1$Nu
+      tau_sq_GHS_1 <- GHS_Run_1$Tau_sq
+      xi_GHS_1 <- GHS_Run_1$xi
+      
+      # Full GHS update for view 2
+      GHS_Run_2 <- GHS_modified_2(
+        X = X_delta_2,
+        Lambda_sq = Lambda_sq_GHS_2,
+        Nu = Nu_GHS_2,
+        Omega = Omega_2_GHS,
+        Sigma = Phi_2,
+        tau_sq = tau_sq_GHS_2,
+        xi = xi_GHS_2
+      )
+      Phi_2_iter <- GHS_Run_2$Sigma
+      Omega_2_GHS <- GHS_Run_2$Omega
+      Lambda_sq_GHS_2 <- GHS_Run_2$Lambda_sq
+      Nu_GHS_2 <- GHS_Run_2$Nu
+      tau_sq_GHS_2 <- GHS_Run_2$Tau_sq
+      xi_GHS_2 <- GHS_Run_2$xi
+    }
+    
     ########################################################
     ### 8) Update eta (multiplicative shrinkage) with zeta prior
     ### Epost_iter provides an auxiliary IG update involving zeta
