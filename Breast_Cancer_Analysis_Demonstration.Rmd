@@ -175,10 +175,6 @@ traceplots to evaluate MCMC convergence. It requires following arguments:
 
 - *Output*: MCMC output from the MHCFM code.
 
-- *Shrinkage Threshold*: A user defined threshold value to assess for potential overshrinking.  We evaluate the posterior distribution of the first CC, and if it is smaller than this threshold with posterior probability greater than 50\%, then overshrinkage might have occurred. 
-
-- *shrinkage_check*: By default TRUE.  Determines whether to perform the check of overshrinkage.
-
 - *plot_indicator*: By default TRUE. Generates traceplots.
 
 - *plot_components*: Number of components of first vectors of both views needed to be plot.
@@ -197,12 +193,9 @@ Summary_Analysis <-
   Analysis_Summary(
     Output = Output,
     Data=Data_Set_1,
-    shrinkage_threshold = 0.2,
     plot_indicator = TRUE,
     plot_components = 10,
-    alpha.CC=0.05, alpha.dir=0.50, 
-    shrinkage_check = TRUE
-    )
+    alpha.CC=0.05, alpha.dir=0.50)
 
 
 ```
