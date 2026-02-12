@@ -237,21 +237,11 @@ The objects contain the following information:
 
 - \texttt{CC.data.frame}: The summary file contains the posterior means of the first \texttt{CCA\_select} canonical correlations, and the credible interval bounds for each.
 
-
-Once, we have established that MCMC convergence is appropriate from the traceplots and ESS, we next need to determine if the MHCFM output is compromised due to potential overshrinkage. To that end, we consider \texttt{Shrinkage\_calculator}, the posterior probability that the first CC is less than the \texttt{shrinkage\_threshold}.  
-
-```{r, Shrinkage Calculator,include=TRUE, message=FALSE}
-
-Summary_Analysis$Shrinkage_calculator
-
-```
-
-If this exceeds alpha, which is set 0.5 here, there is a high probability given to low CC suggesting overshrinkage. The Summary function gives out the message which tells whether overshrinkage is detected (if \texttt{shrinkage\_check} is set to TRUE). 
-We also note that in cases with high levels of over-shrinkage, there are often issues with MCMC convergence with poor ESS.  
+Once, we have established that MCMC convergence is appropriate from the traceplots and ESS, we go for posterior inference. 
 
 ## Posterior Inference (Point Estimates and Intervals)
 
-If we pass the overshrinkage criteria, we will perform inference using these samples.  Firstly, we consider the posterior means and the credible intervals for the canonical correlations.
+We will perform inference using these samples.  Firstly, we consider the posterior means and the credible intervals for the canonical correlations.
 
 ```{r CC Bounds,include=TRUE, message=TRUE}
 
