@@ -218,8 +218,6 @@ names(Summary_Analysis)
 ```
 The objects contain the following information:
 
-- \texttt{Shrinkage\_calculator}: The posterior probability that the first CC is less than the \texttt{shrinkage\_threshold}.
-
 - \texttt{first\_direction\_significant\_features\_View1} and \texttt{\_View2}: These provide indicator vectors representing the significant features in direction vector 1 for View 1 and View 2.
 
 - \texttt{V1.dir.data.frame} and \texttt{V2.dir.data.frame}: These are *p1* by 3 and *p2* by 3 data frames containing the estimated first direction vector and its credible interval for each view.
